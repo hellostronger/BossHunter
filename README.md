@@ -96,6 +96,13 @@ bosshunter run
 
 `bosshunter connect` 只检查连接，不会替你启动 Chrome 或登录招聘平台。Windows、macOS、Linux 的 Chrome 设置和完整排错步骤见 [完整上手指南](docs/QUICKSTART.md)。
 
+### 可选：WebBridge 采集与技能图谱
+
+- 安装 Kimi WebBridge 插件后，`bosshunter collect-wb` 可以复用你已登录的 Chrome 采集 BOSS 岗位，不占用内部页面额度，落库结构与常规采集一致。
+- `bosshunter skill-graph` 会把岗位 JD 归纳成技能需求图，对比你的技能画像，输出交互式图谱、差距报告和四周突击学习计划（`data/reports/`）。
+
+两项能力默认关闭，不影响原有流程。安装、配置与限制见 [WebBridge 与技能图谱](docs/WEBBRIDGE.md)。
+
 ## 文档导航
 
 | 文档 | 内容 |
@@ -103,6 +110,7 @@ bosshunter run
 | [完整上手指南](docs/QUICKSTART.md) | 安装、Chrome 连接、首次配置和安全边界 |
 | [本机 Agent Tool API](docs/AGENT_API.md) | 让本机 Agent 通过纯后端接口完成通用建档、采集、无 Key 的岗位评估与监测 |
 | [CLI 命令](docs/CLI.md) | 一键流程、分步命令、监听与状态查看 |
+| [WebBridge 与技能图谱](docs/WEBBRIDGE.md) | 复用已登录 Chrome 采集、安装与限制；岗位技能图谱、差距报告与学习计划 |
 | [配置指南](docs/CONFIGURATION.md) | 平台、AI、简历和风险控制配置 |
 | [可选面试准备](docs/interview-integration.md) | 导出岗位 JD、联通同机面试工作台与隐私边界 |
 | [常见问题](docs/FAQ.md) | 封号风险、平台边界、简历格式和连接排错 |
