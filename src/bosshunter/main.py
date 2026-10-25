@@ -160,6 +160,161 @@ def scrape(ctx: click.Context, keyword: str | None, limit: int | None) -> None:
 
 
 @cli.command()
+@click.option("--url", default=None, help="WebBridge 守护进程地址（默认 127.0.0.1:10086/command）")
+@click.option("--session", default=None, help="WebBridge 会话名（默认 bosshunter）")
+@click.pass_context
+def webbridge(ctx: click.Context, url: str | None, session: str | None) -> None:
+    """检测 Kimi WebBridge 插件与浏览器登录状态"""
+    from bosshunter.webbridge import WebBridgeClient
+    from bosshunter.webbridge.boss import diagnose
+
+    wb_cfg = ctx.obj["config"].get("webbridge", {}) if isinstance(ctx.obj["config"].get("webbridge"), dict) else {}
+    client = WebBridgeClient(
+        url=url or wb_cfg.get("command_url") or "http://127.0.0.1:10086/command",
+        session=session or wb_cfg.get("session") or "bosshunter",
+    )
+    console.print(f"[bold]检测 WebBridge[/bold] {client.url} (session={client.session})")
+    try:
+        result = diagnose(client)
+    except Exception as exc:  # noqa: BLE001 - CLI reports the failure verbatim
+        console.print(f"[red]✗[/red] WebBridge 不可用：{exc}")
+        raise SystemExit(1) from exc
+    page = result.get("page") or {}
+    console.print_json(data=result)
+    if page.get("login"):
+        console.print("[yellow]浏览器当前停在登录页，请先在 Chrome 中登录 BOSS 直聘。[/yellow]")
+    elif page.get("cards"):
+        console.print(f"[green]✓[/green] 当前页面可解析到 {page['cards']} 张岗位卡片")
+    elif page.get("url"):
+        console.print("[dim]当前页面不是岗位列表页，可以先运行 bosshunter collect-wb。[/dim]")
+
+
+@cli.command(name="collect-wb")
+@click.option("--keyword", "keywords", multiple=True, help="搜索关键词，可重复；默认读取配置")
+@click.option("--city", "cities", multiple=True, help="目标城市，可重复；默认读取配置")
+@click.option("--pages", "pages", type=click.IntRange(1, 10), default=None, help="每个组合的列表页数（最大 10）")
+@click.option("--details", "details", type=click.IntRange(0, 50), default=0, help="本次最多打开多少个详情页（0 = 只取列表）")
+@click.option("--max-new", "max_new", type=click.IntRange(1, 200), default=20, help="本次最多新增岗位数")
+@click.option("--dry-run", is_flag=True, help="只采集不落库")
+@click.option("--no-filter", is_flag=True, help="跳过关键词/薪资/公司等硬过滤")
+@click.option("--delay-scale", default=1.0, type=float, help="页面间等待倍率（>=1 更保守）")
+@click.option("--url", default=None, help="WebBridge 守护进程地址")
+@click.option("--session", default=None, help="WebBridge 会话名")
+@click.pass_context
+def collect_wb(
+    ctx: click.Context,
+    keywords: tuple[str, ...],
+    cities: tuple[str, ...],
+    pages: int | None,
+    details: int,
+    max_new: int,
+    dry_run: bool,
+    no_filter: bool,
+    delay_scale: float,
+    url: str | None,
+    session: str | None,
+) -> None:
+    """通过 Kimi WebBridge 采集 BOSS 岗位（绕过 CDP 页面额度）"""
+    from bosshunter.webbridge.boss import BossWebBridgeCollector
+
+    config = ctx.obj["config"]
+    search_cfg = config.get("search", {}) if isinstance(config.get("search"), dict) else {}
+    profile_cfg = config.get("profile", {}) if isinstance(config.get("profile"), dict) else {}
+    keyword_list = list(keywords) or list(search_cfg.get("keywords") or [])
+    city_list = list(cities) or list(search_cfg.get("cities") or []) or list(profile_cfg.get("target_cities") or [])
+    if not keyword_list:
+        raise click.UsageError("没有搜索关键词：请传 --keyword 或在配置面板中填写搜索关键词")
+    if not city_list:
+        raise click.UsageError("没有目标城市：请传 --city 或在配置面板中填写目标城市")
+
+    page_count = pages or int(search_cfg.get("max_pages") or 1)
+    page_count = max(1, min(page_count, 10))
+    console.print(
+        f"[bold]WebBridge 采集[/bold] 关键词={keyword_list} 城市={city_list} "
+        f"页数={page_count} 详情预算={details} 新增上限={max_new}"
+    )
+    collector = BossWebBridgeCollector(
+        config, url=url, session=session, delay_scale=delay_scale
+    )
+    try:
+        result = collector.collect(
+            keyword_list,
+            city_list,
+            pages=page_count,
+            details=details,
+            max_new=max_new,
+            dry_run=dry_run,
+            use_filter=not no_filter,
+            progress=lambda message: console.print(f"[dim]{message}[/dim]"),
+        )
+    except Exception as exc:  # noqa: BLE001 - CLI reports the failure verbatim
+        console.print(f"[red]✗[/red] 采集失败：{exc}")
+        raise SystemExit(1) from exc
+
+    status = "（dry-run，未落库）" if dry_run else ""
+    console.print(
+        f"[green]✓[/green] 采集完成{status}：新增 {result['new']}，重复 {result['duplicate']}，"
+        f"过滤 {result['filtered']}，详情 {result['detail_requested']} 次"
+    )
+    if result.get("errors"):
+        console.print(f"[yellow]有 {len(result['errors'])} 条错误，详情见运行报告。[/yellow]")
+    if result.get("report"):
+        console.print(f"[dim]运行报告：{result['report']}[/dim]")
+    _hint_web()
+
+
+@cli.command(name="skill-graph")
+@click.option("--limit", "limit", type=int, default=None, help="只分析最近的 N 个岗位")
+@click.option("--skills", default=None, help="用逗号分隔的已掌握技能（覆盖 data/skills-profile.yaml）")
+@click.option("--profile", "profile_path", default=None, help="技能画像 YAML 路径（默认 data/skills-profile.yaml）")
+@click.option("--workers", "workers", type=click.IntRange(1, 8), default=3, help="AI 抽取并发数")
+@click.option("--skip-extract", is_flag=True, help="跳过 AI 抽取，直接用缓存重绘报告")
+@click.option("--no-plan", is_flag=True, help="不生成学习计划")
+@click.option("--report-dir", "report_dir", default=None, help="报告输出目录（默认 data/reports）")
+@click.pass_context
+def skill_graph(
+    ctx: click.Context,
+    limit: int | None,
+    skills: str | None,
+    profile_path: str | None,
+    workers: int,
+    skip_extract: bool,
+    no_plan: bool,
+    report_dir: str | None,
+) -> None:
+    """汇总岗位技能需求，生成技能图谱、差距报告和突击学习计划"""
+    from bosshunter.analysis.skill_graph import DEFAULT_PROFILE, DEFAULT_REPORT_DIR, build_skill_graph
+
+    console.print("[bold]构建岗位技能图谱...[/bold]")
+    try:
+        result = build_skill_graph(
+            ctx.obj["config"],
+            report_dir=report_dir or DEFAULT_REPORT_DIR,
+            profile_path=profile_path or DEFAULT_PROFILE,
+            skills=skills,
+            limit=limit,
+            workers=workers,
+            skip_extract=skip_extract,
+            no_plan=no_plan,
+            progress=lambda message: console.print(f"[dim]{message}[/dim]"),
+        )
+    except Exception as exc:  # noqa: BLE001 - CLI reports the failure verbatim
+        console.print(f"[red]✗[/red] 生成失败：{exc}")
+        raise SystemExit(1) from exc
+
+    extract = result.get("extract") or {}
+    console.print(
+        f"[green]✓[/green] 已分析 {result['jobs']} 个岗位 / {result['skills']} 项技能，"
+        f"加权覆盖率 {result['coverage']}%（本次抽取 {extract.get('extracted', 0)} 条）"
+    )
+    console.print(f"  图谱：{result['html']}")
+    console.print(f"  报告：{result['md']}")
+    console.print(f"  数据：{result['json']}")
+    if extract.get("errors"):
+        console.print(f"[yellow]有 {len(extract['errors'])} 个岗位抽取失败，可重跑补上。[/yellow]")
+
+
+@cli.command()
 @click.option("--rescore-filtered", is_flag=True, help="同时重新评分之前被 AI 判为低分的岗位")
 @click.pass_context
 def score(ctx: click.Context, rescore_filtered: bool) -> None:

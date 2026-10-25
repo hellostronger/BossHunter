@@ -41,6 +41,18 @@ bosshunter resume --job-id JOB_ID
 
 该命令为指定岗位生成定制简历 PDF。简历请求仍应由用户检查后手动处理。
 
+## WebBridge 采集与技能图谱（可选）
+
+```bash
+bosshunter webbridge                         # 检测 WebBridge 守护进程与浏览器登录状态
+bosshunter collect-wb -k "AI Agent" --city 深圳 --pages 2 --details 6
+bosshunter collect-wb -k 大模型 -k RAG --city 深圳 --city 广州 --pages 1 --dry-run
+bosshunter skill-graph                       # AI 抽取 JD 技能并生成图谱/差距报告
+bosshunter skill-graph --skip-extract        # 只重绘报告
+```
+
+`collect-wb` 通过 Kimi WebBridge 在已登录的 Chrome 中采集，落库结构与常规采集一致，不占用内部页面额度。`skill-graph` 输出到 `data/reports/`。安装、配置与限制见 [WEBBRIDGE.md](WEBBRIDGE.md)。
+
 ## Web 面板参数
 
 ```bash

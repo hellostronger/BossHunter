@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>岗位技能图谱 · BossHunter</title>
+<style>
+  :root{
+    --bg:#070d18; --panel:#0e1728; --panel2:#121d33; --line:#1e2c47;
+    --text:#e6edf7; --muted:#8aa0bf; --accent:#2dd4bf; --accent2:#60a5fa;
+    --owned:#22c55e; --partial:#f59e0b; --missing:#f05252; --unknown:#64748b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:radial-gradient(1200px 700px at 20% -10%,#12233d 0%,var(--bg) 55%) fixed;color:var(--text);
+    font-family:system-ui,-apple-system,"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  header{padding:26px 30px 10px;display:flex;flex-wrap:wrap;gap:18px;align-items:flex-end;justify-content:space-between}
+  h1{font-size:24px;margin:0 0 6px;letter-spacing:.5px}
+  .sub{color:var(--muted);font-size:13px}
+  .stats{display:flex;gap:12px;flex-wrap:wrap}
+  .stat{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;
+    padding:12px 16px;min-width:118px}
+  .stat b{display:block;font-size:22px;line-height:1.2}
+  .stat span{color:var(--muted);font-size:12px}
+  main{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(360px,.75fr);gap:18px;padding:16px 30px 8px}
+  @media (max-width:1180px){main{grid-template-columns:1fr}}
+  .card{background:linear-gradient(180deg,rgba(18,29,51,.92),rgba(14,23,40,.96));border:1px solid var(--line);
+    border-radius:18px;box-shadow:0 18px 50px rgba(0,0,0,.28)}
+  .graph-panel{position:relative;overflow:hidden;min-height:640px;display:flex;flex-direction:column}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .chip{border:1px solid var(--line);background:#0b1526;color:var(--muted);border-radius:999px;padding:6px 12px;
+    font-size:12px;cursor:pointer;transition:.15s}
+  .chip:hover{color:var(--text);border-color:#2a3d61}
+  .chip.on{background:rgba(45,212,191,.14);border-color:rgba(45,212,191,.55);color:#a7f3e8}
+  .spacer{flex:1}
+  input[type=search]{background:#0b1526;border:1px solid var(--line);color:var(--text);border-radius:10px;
+    padding:7px 11px;font-size:13px;outline:none;min-width:180px}
+  input[type=search]:focus{border-color:rgba(96,165,250,.6)}
+  select{background:#0b1526;border:1px solid var(--line);color:var(--text);border-radius:10px;padding:7px 10px;font-size:13px}
+  #graph{flex:1;width:100%;min-height:560px;display:block;cursor:grab}
+  #graph.dragging{cursor:grabbing}
+  .legend{position:absolute;left:16px;bottom:14px;display:flex;gap:14px;font-size:11.5px;color:var(--muted);
+    background:rgba(7,13,24,.72);border:1px solid var(--line);border-radius:12px;padding:8px 12px;backdrop-filter:blur(6px)}
+  .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+  .hint{position:absolute;right:16px;bottom:14px;font-size:11.5px;color:#6b819f}
+  #tooltip{position:absolute;pointer-events:none;background:rgba(6,12,22,.95);border:1px solid #29405f;
+    border-radius:10px;padding:8px 10px;font-size:12px;max-width:280px;display:none;z-index:5;line-height:1.5}
+  aside{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .side-block{padding:16px 18px}
+  .side-title{font-size:13px;letter-spacing:.6px;color:var(--muted);text-transform:uppercase;margin:0 0 12px}
+  .empty{color:var(--muted);font-size:13px;line-height:1.7}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted);margin-right:6px}
+  .skill-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .dot{width:11px;height:11px;border-radius:50%;flex:0 0 auto}
+  .skill-name{font-size:20px;font-weight:600}
+  .metric-row{display:flex;gap:14px;margin:10px 0 12px;flex-wrap:wrap}
+  .metric{background:#0b1526;border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:88px}
+  .metric b{display:block;font-size:17px}
+  .metric span{font-size:11px;color:var(--muted)}
+  .samples{display:flex;flex-direction:column;gap:8px;margin-top:8px;max-height:260px;overflow:auto}
+  .sample{background:#0b1526;border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:12.5px}
+  .sample .t{font-weight:600;margin-bottom:2px}
+  .sample .c{color:var(--muted)}
+  .rank{padding:16px 18px}
+  .rank-row{display:grid;grid-template-columns:22px 1fr 64px 58px;gap:8px;align-items:center;padding:7px 0;
+    border-bottom:1px dashed #16233a;cursor:pointer;font-size:12.5px}
+  .rank-row:hover{background:rgba(96,165,250,.06)}
+  .rank-row .bar{height:6px;border-radius:6px;background:#16233a;overflow:hidden}
+  .rank-row .bar i{display:block;height:100%;background:linear-gradient(90deg,#2dd4bf,#60a5fa)}
+  .rank-row .num{color:var(--muted);text-align:right}
+  .plan{margin:10px 30px 40px;padding:22px 26px;line-height:1.8}
+  .plan h2{margin:6px 0 10px;font-size:19px}
+  .plan h3{margin:20px 0 8px;font-size:16px;color:#bfe9ff}
+  .plan h4{margin:16px 0 6px;font-size:14px;color:#a7f3e8}
+  .plan p{margin:8px 0;color:#cdd9ea}
+  .plan li{margin:4px 0;color:#cdd9ea}
+  .plan code{background:#0b1526;border:1px solid var(--line);padding:1px 5px;border-radius:5px;font-size:12px}
+  .notice{background:rgba(245,158,11,.09);border:1px solid rgba(245,158,11,.35);color:#fcd34d;border-radius:12px;
+    padding:10px 14px;font-size:12.5px;margin:0 30px 4px;line-height:1.6}
+  .notice code{color:#fde68a}
+  .footer{padding:0 30px 30px;color:#5d7292;font-size:11.5px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>岗位技能图谱 <span style="font-size:13px;color:var(--muted);font-weight:400">AI / 大模型方向</span></h1>
+    <div class="sub" id="meta"></div>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div class="notice" id="profileNotice" style="display:none"></div>
+
+<main>
+  <section class="card graph-panel">
+    <div class="toolbar">
+      <button class="chip on" data-status="all">全部</button>
+      <button class="chip" data-status="missing">缺口</button>
+      <button class="chip" data-status="partial">部分具备</button>
+      <button class="chip" data-status="owned">已具备</button>
+      <span class="spacer"></span>
+      <select id="catSelect"></select>
+      <input type="search" id="search" placeholder="搜索技能，如 RAG">
+    </div>
+    <canvas id="graph"></canvas>
+    <div class="legend">
+      <span><i style="background:var(--missing)"></i>缺口</span>
+      <span><i style="background:var(--partial)"></i>部分具备</span>
+      <span><i style="background:var(--owned)"></i>已具备</span>
+      <span><i style="background:var(--unknown)"></i>未评估</span>
+    </div>
+    <div class="hint">滚轮缩放 · 拖拽平移 · 点击节点看岗位</div>
+    <div id="tooltip"></div>
+  </section>
+
+  <aside>
+    <section class="card side-block" id="detail">
+      <h3 class="side-title">技能详情</h3>
+      <div class="empty">点击左侧节点，查看这个技能被多少岗位硬性要求、哪些公司在招、以及相关技能组合。</div>
+    </section>
+    <section class="card rank">
+      <h3 class="side-title">需求排行 <span style="text-transform:none;letter-spacing:0">（按加权需求）</span></h3>
+      <div id="rankList"></div>
+    </section>
+  </aside>
+</main>
+
+<section class="card plan" id="plan"></section>
+<div class="footer">数据来源：BOSS 直聘岗位 JD（由 BossHunter 采集）· 由技能图谱功能生成 · 报告文件：data/reports/</div>
+
+<script>
+const DATA = /*__DATA__*/;
+const COLORS = {owned:'#22c55e', partial:'#f59e0b', missing:'#f05252', unknown:'#64748b'};
+const STATUS_TEXT = {owned:'已具备', partial:'部分具备', missing:'缺口', unknown:'未评估'};
+
+const meta = document.getElementById('meta');
+meta.textContent = `生成于 ${DATA.generated_at} · 已分析 ${DATA.job_count} 个岗位 · ${DATA.stats.skills} 项技能`;
+
+const stats = document.getElementById('stats');
+[['岗位数', DATA.job_count], ['技能数', DATA.stats.skills], ['加权覆盖率', DATA.stats.coverage + '%'], ['已具备', DATA.stats.owned], ['缺口', DATA.stats.missing]]
+  .forEach(([label, value]) => {
+    const el = document.createElement('div');
+    el.className = 'stat';
+    el.innerHTML = `<b>${value}</b><span>${label}</span>`;
+    stats.appendChild(el);
+  });
+
+if (!DATA.profile_skills.length) {
+  const n = document.getElementById('profileNotice');
+  n.style.display = 'block';
+  n.innerHTML = '还没有填写你的技能，所以图上所有技能都显示为“未评估”。先编辑 <code>data/skills-profile.yaml</code> 写好技能，再运行 <code>bosshunter skill-graph --skip-extract</code>，即可看到覆盖率与缺口。';
+}
+
+const catSelect = document.getElementById('catSelect');
+catSelect.innerHTML = '<option value="all">全部类别</option>' +
+  DATA.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+// ---------- graph ----------
+const canvas = document.getElementById('graph');
+const ctx = canvas.getContext('2d');
+const tooltip = document.getElementById('tooltip');
+let W = 0, H = 0, dpr = window.devicePixelRatio || 1;
+let view = {x: 0, y: 0, k: 1};
+let hovered = null, selected = null, draggingNode = null, panning = false;
+let filterStatus = 'all', filterCat = 'all', query = '';
+
+const nodes = DATA.nodes.map((n, i) => ({...n, x: 0, y: 0, vx: 0, vy: 0, r: 7 + Math.sqrt(n.demand) * 2.6}));
+const byId = new Map(nodes.map(n => [n.id, n]));
+const edges = DATA.edges.map(e => ({...e, a: byId.get(e.source), b: byId.get(e.target)})).filter(e => e.a && e.b);
+
+const cats = [...new Set(nodes.map(n => n.category))];
+const anchors = {};
+cats.forEach((c, i) => {
+  const a = (i / cats.length) * Math.PI * 2 - Math.PI / 2;
+  anchors[c] = {x: Math.cos(a) * 330, y: Math.sin(a) * 300};
+});
+nodes.forEach((n, i) => {
+  const a = anchors[n.category] || {x: 0, y: 0};
+  const ang = (i / nodes.length) * Math.PI * 2;
+  n.x = a.x + Math.cos(ang) * (60 + (i % 7) * 12);
+  n.y = a.y + Math.sin(ang) * (60 + (i % 5) * 14);
+});
+
+function respawn() {
+  const rect = canvas.getBoundingClientRect();
+  W = Math.max(320, rect.width);
+  H = Math.max(420, rect.height);
+  canvas.width = W * dpr;
+  canvas.height = H * dpr;
+}
+function fit() {
+  let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+  nodes.forEach(n => { minX = Math.min(minX, n.x - n.r); maxX = Math.max(maxX, n.x + n.r); minY = Math.min(minY, n.y - n.r); maxY = Math.max(maxY, n.y + n.r); });
+  const bw = Math.max(1, maxX - minX), bh = Math.max(1, maxY - minY);
+  const k = Math.min((W - 120) / bw, (H - 120) / bh, 1.6);
+  view.k = Math.max(0.25, k);
+  view.x = W / 2 - ((minX + maxX) / 2) * view.k;
+  view.y = H / 2 - ((minY + maxY) / 2) * view.k;
+}
+
+function visible(n) {
+  if (filterStatus !== 'all' && n.status !== filterStatus) return false;
+  if (filterCat !== 'all' && n.category !== filterCat) return false;
+  if (query && !n.label.toLowerCase().includes(query)) return false;
+  return true;
+}
+function dimmed(n) { return (filterStatus !== 'all' || filterCat !== 'all' || query) && !visible(n); }
+
+function tick(alpha) {
+  const centerForce = 0.0009, anchorForce = 0.0022, repulse = 5200, spring = 0.008, damping = 0.86;
+  for (let i = 0; i < nodes.length; i++) {
+    const a = nodes[i];
+    const anchor = anchors[a.category] || {x: 0, y: 0};
+    a.vx += (anchor.x - a.x) * anchorForce;
+    a.vy += (anchor.y - a.y) * anchorForce;
+    a.vx += (0 - a.x) * centerForce;
+    a.vy += (0 - a.y) * centerForce;
+    for (let j = i + 1; j < nodes.length; j++) {
+      const b = nodes[j];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      let d2 = dx * dx + dy * dy;
+      if (d2 < 1) { d2 = 1; dx = Math.random() - .5; dy = Math.random() - .5; }
+      if (d2 > 250000) continue;
+      const d = Math.sqrt(d2);
+      const f = Math.min(3.2, repulse / d2);
+      const fx = dx / d * f, fy = dy / d * f;
+      a.vx -= fx; a.vy -= fy; b.vx += fx; b.vy += fy;
+    }
+  }
+  edges.forEach(e => {
+    const dx = e.b.x - e.a.x, dy = e.b.y - e.a.y;
+    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+    const ideal = 92 + 30 / Math.min(4, e.weight);
+    const f = (d - ideal) * spring * Math.min(2.4, 0.7 + e.weight / 6);
+    const fx = dx / d * f, fy = dy / d * f;
+    e.a.vx += fx; e.a.vy += fy; e.b.vx -= fx; e.b.vy -= fy;
+  });
+  nodes.forEach(n => {
+    if (n === draggingNode) return;
+    n.vx *= damping; n.vy *= damping;
+    n.x += n.vx * alpha; n.y += n.vy * alpha;
+  });
+}
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const {k} = view;
+  ctx.save();
+  ctx.translate(view.x, view.y);
+  ctx.scale(k, k);
+
+  const related = new Set();
+  if (hovered || selected) {
+    const focus = hovered || selected;
+    edges.forEach(e => { if (e.a === focus) related.add(e.b.id); if (e.b === focus) related.add(e.a.id); });
+  }
+  const focus = hovered || selected;
+
+  edges.forEach(e => {
+    const active = !focus || e.a === focus || e.b === focus;
+    const dim = dimmed(e.a) || dimmed(e.b);
+    ctx.globalAlpha = dim ? 0.03 : active ? 0.36 : 0.07;
+    ctx.strokeStyle = active && focus ? '#60a5fa' : '#3b5478';
+    ctx.lineWidth = Math.min(3.2, 0.6 + e.weight / 7) / k * (active && focus ? 1.4 : 1);
+    ctx.beginPath();
+    ctx.moveTo(e.a.x, e.a.y);
+    ctx.lineTo(e.b.x, e.b.y);
+    ctx.stroke();
+  });
+
+  nodes.forEach(n => {
+    const dim = dimmed(n);
+    const rel = related.has(n.id);
+    ctx.globalAlpha = dim ? 0.10 : 1;
+    const color = COLORS[n.status] || COLORS.unknown;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.lineWidth = (n === selected ? 3.4 : rel || n === hovered ? 2.2 : 1) / k;
+    ctx.strokeStyle = n === selected ? '#e6edf7' : rel ? '#bfe9ff' : 'rgba(7,13,24,.85)';
+    ctx.stroke();
+
+    if (!dim && (k > 0.62 || n.demand > 26 || n === hovered || n === selected)) {
+      ctx.globalAlpha = 1;
+      ctx.font = `${Math.max(11, 12.5)}px system-ui, "PingFang SC", "Microsoft YaHei"`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      const label = n.label;
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = 'rgba(7,13,24,.72)';
+      ctx.fillRect(n.x - tw / 2 - 4, n.y + n.r + 3, tw + 8, 16);
+      ctx.fillStyle = n === hovered || n === selected ? '#ffffff' : '#d5e3f6';
+      ctx.fillText(label, n.x, n.y + n.r + 5);
+    }
+  });
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+let raf = null, running = true;
+function loop() {
+  if (!running) return;
+  tick(1);
+  draw();
+  raf = requestAnimationFrame(loop);
+}
+
+function toWorld(sx, sy) { return {x: (sx - view.x) / view.k, y: (sy - view.y) / view.k}; }
+function pick(sx, sy) {
+  const p = toWorld(sx, sy);
+  let best = null, bestD = 1e9;
+  nodes.forEach(n => {
+    const d = Math.hypot(n.x - p.x, n.y - p.y);
+    if (d < n.r + 6 / view.k && d < bestD) { best = n; bestD = d; }
+  });
+  return best;
+}
+
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const world = toWorld(mx, my);
+  const factor = e.deltaY < 0 ? 1.12 : 0.89;
+  view.k = Math.min(4, Math.max(0.2, view.k * factor));
+  view.x = mx - world.x * view.k;
+  view.y = my - world.y * view.k;
+  if (!raf) draw();
+}, {passive: false});
+
+canvas.addEventListener('pointerdown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  const hit = pick(sx, sy);
+  if (hit) {
+    draggingNode = hit;
+    if (hit !== selected) select(hit);
+  } else {
+    panning = true;
+    canvas.classList.add('dragging');
+  }
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left, sy = e.clientY - rect.top;
+  if (draggingNode) {
+    const p = toWorld(sx, sy);
+    draggingNode.x = p.x; draggingNode.y = p.y;
+    draggingNode.vx = draggingNode.vy = 0;
+  } else if (panning) {
+    view.x += e.movementX;
+    view.y += e.movementY;
+  } else {
+    const hit = pick(sx, sy);
+    if (hit !== hovered) {
+      hovered = hit;
+      if (hit) {
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `<b>${hit.label}</b><br><span style="color:#8aa0bf">${hit.category} · 需求 ${hit.demand} · 硬性 ${hit.must} 岗</span>`;
+      } else {
+        tooltip.style.display = 'none';
+      }
+    }
+    if (hit) {
+      tooltip.style.left = Math.min(W - 290, sx + 16) + 'px';
+      tooltip.style.top = Math.max(48, sy - 10) + 'px';
+    }
+    canvas.style.cursor = hit ? 'pointer' : 'grab';
+  }
+});
+canvas.addEventListener('pointerup', e => {
+  draggingNode = null;
+  panning = false;
+  canvas.classList.remove('dragging');
+});
+canvas.addEventListener('pointerleave', () => { tooltip.style.display = 'none'; hovered = null; draw(); });
+
+function select(node) {
+  selected = node;
+  renderDetail(node);
+  draw();
+}
+
+function renderDetail(n) {
+  const detail = document.getElementById('detail');
+  const related = DATA.edges
+    .filter(e => e.source === n.id || e.target === n.id)
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 6)
+    .map(e => e.source === n.id ? e.target : e.source);
+  const statusColor = COLORS[n.status];
+  detail.innerHTML = `
+    <h3 class="side-title">技能详情</h3>
+    <div class="skill-head"><span class="dot" style="background:${statusColor}"></span>
+      <span class="skill-name">${n.label}</span>
+      <span class="badge">${n.category}</span>
+      <span class="badge" style="color:${statusColor};border-color:${statusColor}55">${STATUS_TEXT[n.status]}</span>
+    </div>
+    <div class="metric-row">
+      <div class="metric"><b>${n.must}</b><span>硬性要求岗位</span></div>
+      <div class="metric"><b>${n.nice}</b><span>加分岗位</span></div>
+      <div class="metric"><b>${n.demand}</b><span>需求权重</span></div>
+    </div>
+    <div style="font-size:12.5px;color:#8aa0bf">相关技能：${related.length ? related.map(r => `<a href="#" data-skill="${r}">${r}</a>`).join(' · ') : '—'}</div>
+    <div class="samples">
+      ${n.samples.map(s => `<div class="sample"><div class="t">${s.t}</div>
+        <div class="c">${s.c} · ${s.s || '薪资面议'}</div>
+        <div><a href="${s.u}" target="_blank" rel="noreferrer">打开岗位</a></div></div>`).join('')}
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:#6b819f">学习资料：
+      <a href="https://www.bing.com/search?q=${encodeURIComponent(n.label + ' 教程 实战')}" target="_blank" rel="noreferrer">搜索教程</a>
+    </div>`;
+  detail.querySelectorAll('[data-skill]').forEach(el => {
+    el.addEventListener('click', ev => {
+      ev.preventDefault();
+      const target = byId.get(el.dataset.skill);
+      if (target) select(target);
+    });
+  });
+}
+
+function buildRank() {
+  const list = document.getElementById('rankList');
+  const max = Math.max(...DATA.nodes.map(n => n.demand), 1);
+  list.innerHTML = DATA.nodes.slice(0, 30).map((n, i) => `
+    <div class="rank-row" data-id="${n.id}">
+      <span class="num">${i + 1}</span>
+      <div>
+        <div><span class="dot" style="display:inline-block;background:${COLORS[n.status]};margin-right:6px"></span>${n.label}</div>
+        <div class="bar"><i style="width:${Math.round(n.demand / max * 100)}%"></i></div>
+      </div>
+      <span class="num">${n.demand}</span>
+      <span class="num" style="color:#8aa0bf">${n.category}</span>
+    </div>`).join('');
+  list.querySelectorAll('.rank-row').forEach(row => row.addEventListener('click', () => {
+    const n = byId.get(row.dataset.id);
+    if (n) { select(n); centerOn(n); }
+  }));
+}
+
+function centerOn(n) {
+  view.x = W / 2 - n.x * view.k;
+  view.y = H / 2 - n.y * view.k;
+  draw();
+}
+
+document.querySelectorAll('[data-status]').forEach(btn => btn.addEventListener('click', () => {
+  document.querySelectorAll('[data-status]').forEach(b => b.classList.toggle('on', b === btn));
+  filterStatus = btn.dataset.status;
+  draw();
+}));
+catSelect.addEventListener('change', () => { filterCat = catSelect.value; draw(); });
+document.getElementById('search').addEventListener('input', e => { query = e.target.value.trim().toLowerCase(); draw(); });
+
+document.getElementById('plan').innerHTML = `<h2>突击学习计划</h2>${DATA.plan_html || '<p class="empty">尚未生成</p>'}`;
+
+new ResizeObserver(() => { respawn(); draw(); }).observe(canvas);
+document.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', e => e.preventDefault()));
+
+respawn();
+for (let i = 0; i < 380; i++) tick(1);
+fit();
+buildRank();
+draw();
+running = true;
+loop();
+</script>
+</body>
+</html>

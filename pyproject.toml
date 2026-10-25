@@ -36,6 +36,7 @@ artifacts = [
     "src/bosshunter/browser/runtime/*.mjs",
     "src/bosshunter/browser/runtime/site-patterns/*.md",
     "src/bosshunter/data/*.json",
+    "src/bosshunter/analysis/*.html",
 ]
 
 # The frontend build output is no longer tracked in VCS (built on demand),

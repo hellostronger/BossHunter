@@ -1,0 +1,31 @@
+# 技能画像：用于 `bosshunter skill-graph` 计算个人覆盖率与缺口
+# 复制为 data/skills-profile.yaml 再修改；`level` 只区分：
+#   熟练 = 能独立做项目
+#   了解 / 入门 = 学过或用过一点（计入「部分具备」）
+# 技能名会自动映射到内置词表，例如 k8s -> Kubernetes、智能体 -> AI Agent。
+# 修改后重跑：bosshunter skill-graph --skip-extract
+
+skills:
+  - {name: Python, level: 熟练}
+  - {name: SQL, level: 熟练}
+  - {name: RAG, level: 熟练}
+  - {name: 知识库, level: 熟练}
+  - {name: 向量数据库, level: 熟练}
+  - {name: 提示工程, level: 熟练}
+  - {name: Linux, level: 熟练}
+  - {name: Git, level: 熟练}
+  - {name: 数据分析, level: 熟练}
+  - {name: 技术文档, level: 熟练}
+
+  - {name: AI Agent, level: 了解}
+  - {name: LangChain, level: 了解}
+  - {name: MCP, level: 了解}
+  - {name: Function Calling, level: 了解}
+  - {name: 大模型微调, level: 了解}
+  - {name: PyTorch, level: 了解}
+  - {name: Docker, level: 了解}
+  - {name: MySQL, level: 了解}
+  - {name: FastAPI, level: 了解}
+  - {name: 产品设计, level: 了解}
+  - {name: 沟通能力, level: 了解}
+  - {name: 英语能力, level: 了解}
