@@ -556,16 +556,42 @@ def generate_plan(payload: dict[str, Any], config: dict[str, Any], profile: dict
 
 
 def md_to_html(text: str) -> str:
-	lines, out = str(text or "").splitlines(), []
+	text = str(text or "").replace("\ufffd", "")
+	lines, out = text.splitlines(), []
 	in_list = False
-	for raw in lines:
-		line = raw.rstrip()
+	i = 0
+	while i < len(lines):
+		line = lines[i].rstrip()
 		if re.match(r"^#{1,6}\s", line):
 			if in_list:
 				out.append("</ul>")
 				in_list = False
-			level = min(len(line) - len(line.lstrip("#")), 4)
+			level = min(len(line) - len(line.lstrip("#")), 2)
 			out.append(f"<h{level + 2}>{inline_md(line.lstrip('#').strip())}</h{level + 2}>")
+		elif line.strip().startswith("|") and "|" in line.strip()[1:]:
+			if in_list:
+				out.append("</ul>")
+				in_list = False
+			rows = []
+			while i < len(lines) and lines[i].strip().startswith("|"):
+				row = [c.strip() for c in lines[i].strip().strip("|").split("|")]
+				if not all(re.fullmatch(r":?-{2,}:?", c or "-") for c in row):
+					rows.append(row)
+				i += 1
+			i -= 1
+			if rows:
+				head, body = rows[0], rows[1:]
+				cells = "".join(f"<th>{inline_md(c)}</th>" for c in head)
+				out.append(f"<table><thead><tr>{cells}</tr></thead><tbody>")
+				for row in body:
+					cells = "".join(f"<td>{inline_md(c)}</td>" for c in row)
+					out.append(f"<tr>{cells}</tr>")
+				out.append("</tbody></table>")
+		elif re.fullmatch(r"\s*(?:-{3,}|\*{3,}|_{3,})\s*", line):
+			if in_list:
+				out.append("</ul>")
+				in_list = False
+			out.append("<hr>")
 		elif re.match(r"^\s*[-*]\s+", line):
 			if not in_list:
 				out.append("<ul>")
@@ -580,6 +606,7 @@ def md_to_html(text: str) -> str:
 				out.append("</ul>")
 				in_list = False
 			out.append(f"<p>{inline_md(line)}</p>")
+		i += 1
 	if in_list:
 		out.append("</ul>")
 	return "\n".join(out)
@@ -587,6 +614,7 @@ def md_to_html(text: str) -> str:
 
 def inline_md(text: str) -> str:
 	text = html.escape(text)
+	text = re.sub(r"&lt;br\s*/?&gt;", "<br>", text, flags=re.I)
 	text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
 	text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
 	return text

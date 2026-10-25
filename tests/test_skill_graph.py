@@ -132,3 +132,11 @@ def test_write_reports_renders_template_and_markdown(tmp_path):
 def test_markdown_helpers_escape_html():
 	assert inline_md("<b>X</b>") == "&lt;b&gt;X&lt;/b&gt;"
 	assert md_to_html("**粗体**") == "<p><strong>粗体</strong></p>"
+
+
+def test_markdown_renders_tables_breaks_and_rules():
+	html = md_to_html("| 任务 | 动作 |\n| --- | --- |\n| 学 | `a`<br>做 |\n\n---")
+	assert "<table>" in html and "<th>任务</th>" in html
+	assert "<td>学</td>" in html
+	assert "&lt;br&gt;" not in html and "<br>" in html
+	assert "<hr>" in html
